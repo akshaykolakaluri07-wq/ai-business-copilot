@@ -1,4 +1,4 @@
-# 🚀 AI Business Analyst Copilot
+# AI Business Analyst Copilot
 
 An AI-powered system that enables users to query business data using natural language and receive insights, analysis, and predictions.
 
