@@ -1,7 +1,4 @@
-import pandas as pd
-from sklearn.linear_model import LinearRegression
-
-def forecast(df):
+def forecast(df, n_days=5):
     if isinstance(df, str):
         return df
 
@@ -14,7 +11,12 @@ def forecast(df):
     model = LinearRegression()
     model.fit(X, y)
 
-    future_days = pd.DataFrame({"day": range(366, 371)})
+    last_day = df["day"].max()
+
+    future_days = pd.DataFrame({
+        "day": range(last_day + 1, last_day + n_days + 1)
+    })
+
     preds = model.predict(future_days)
 
     return preds.tolist()
