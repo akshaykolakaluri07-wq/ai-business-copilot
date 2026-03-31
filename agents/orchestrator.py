@@ -1,6 +1,8 @@
+import re
 from agents.sql_agent import sql_agent
 from agents.analysis_agent import analyze
 from agents.ml_agent import forecast
+
 
 def route_query(query):
     q = query.lower()
@@ -12,12 +14,30 @@ def route_query(query):
     else:
         return "sql"
 
+
+def extract_days(query):
+    q = query.lower()
+
+    if "week" in q:
+        return 7
+    if "month" in q:
+        return 30
+
+    match = re.search(r"(\d+)", q)
+    if match:
+        return int(match.group(1))
+
+    return 5  # default
+
+
 def handle_query(query):
     route = route_query(query)
 
     if route == "ml":
         df = sql_agent("SELECT * FROM sales")
-        return forecast(df)
+
+        n_days = extract_days(query)  # 🔥 key fix
+        return forecast(df, n_days=n_days)
 
     elif route == "analysis":
         df = sql_agent("SELECT * FROM sales")
