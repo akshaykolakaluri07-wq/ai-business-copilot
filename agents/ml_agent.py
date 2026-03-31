@@ -1,3 +1,5 @@
+import pandas as pd
+from sklearn.linear_model import LinearRegression
 def forecast(df, n_days=5):
     if isinstance(df, str):
         return df
