@@ -36,7 +36,7 @@ def handle_query(query):
     if route == "ml":
         df = sql_agent("SELECT * FROM sales")
 
-        n_days = extract_days(query)  # 🔥 key fix
+        n_days = extract_days(query)
         return forecast(df, n_days=n_days)
 
     elif route == "analysis":
