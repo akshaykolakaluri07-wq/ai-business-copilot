@@ -1,5 +1,5 @@
 from langgraph.graph import StateGraph
-from typing import TypedDict
+from typing import TypedDict, Any
 import re
 
 from agents.sql_agent import sql_agent
@@ -8,26 +8,31 @@ from agents.ml_agent import forecast
 
 
 # 🔹 State definition
-class AgentState(TypedDict):
+class AgentState(TypedDict, total=False):
     query: str
     route: str
-    data: any
-    result: any
+    data: Any
+    result: Any
 
 
-# 🔹 Route logic (your existing logic)
+# 🔹 Route logic
 def route_query(state: AgentState):
     q = state["query"].lower()
 
     if "predict" in q or "forecast" in q:
-        return {"route": "ml"}
+        route = "ml"
     elif "why" in q or "analysis" in q:
-        return {"route": "analysis"}
+        route = "analysis"
     else:
-        return {"route": "sql"}
+        route = "sql"
+
+    return {
+        "query": state["query"],   # preserve state
+        "route": route
+    }
 
 
-# 🔹 Extract days (unchanged)
+# 🔹 Extract days
 def extract_days(query):
     q = query.lower()
 
@@ -47,21 +52,37 @@ def extract_days(query):
 def sql_node(state: AgentState):
     print("Running SQL Node...")
     df = sql_agent("SELECT * FROM sales")
-    return {"data": df}
+
+    return {
+        "query": state["query"],
+        "route": state["route"],
+        "data": df
+    }
 
 
-# 🔹 Direct SQL Node (for normal queries)
+# 🔹 Direct SQL Node
 def direct_sql_node(state: AgentState):
     print("Running Direct SQL Query...")
     result = sql_agent(state["query"])
-    return {"result": result}
+
+    return {
+        "query": state["query"],
+        "route": state["route"],
+        "result": result
+    }
 
 
 # 🔹 Analysis Node
 def analysis_node(state: AgentState):
     print("Running Analysis Node...")
     result = analyze(state["data"])
-    return {"result": result}
+
+    return {
+        "query": state["query"],
+        "route": state["route"],
+        "data": state["data"],
+        "result": result
+    }
 
 
 # 🔹 ML Node
@@ -69,10 +90,16 @@ def ml_node(state: AgentState):
     print("Running ML Node...")
     n_days = extract_days(state["query"])
     result = forecast(state["data"], n_days=n_days)
-    return {"result": result}
+
+    return {
+        "query": state["query"],
+        "route": state["route"],
+        "data": state["data"],
+        "result": result
+    }
 
 
-# 🔹 Router (LangGraph conditional edge)
+# 🔹 Router function
 def router(state: AgentState):
     return state["route"]
 
@@ -88,10 +115,10 @@ def build_graph():
     graph.add_node("ml", ml_node)
     graph.add_node("direct_sql", direct_sql_node)
 
-    # Entry
+    # Entry point
     graph.set_entry_point("route")
 
-    # Routing
+    # First routing
     graph.add_conditional_edges(
         "route",
         router,
@@ -102,7 +129,7 @@ def build_graph():
         }
     )
 
-    # After SQL → go to analysis or ML
+    # After SQL → route again
     graph.add_conditional_edges(
         "sql",
         router,
@@ -120,11 +147,14 @@ def build_graph():
     return graph.compile()
 
 
-# 🔹 App instance
+# 🔹 Graph instance
 app = build_graph()
 
 
-# 🔹 Public function (same as before)
+# 🔹 Main function
 def handle_query(query: str):
     result = app.invoke({"query": query})
-    return result["result"]
+
+    print("FINAL STATE:", result)  # debug
+
+    return result.get("result", "No result generated")
