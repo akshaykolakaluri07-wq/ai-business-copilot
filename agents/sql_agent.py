@@ -1,5 +1,6 @@
 from utils.llm import ask_llm
 from db.database import run_query
+import pandas as pd
 
 SCHEMA = """
 Table: sales
@@ -41,27 +42,45 @@ You are a SQL expert.
 Rules:
 - Return ONLY a SQL query
 - Do NOT use markdown or backticks
-- Do NOT explain anything
 - Only generate SELECT queries
+- Use correct column names
+- Do not hallucinate columns
 
 Question: {user_query}
 """
     return ask_llm(prompt)
 
 
+# 🔥 Retry logic (VERY IMPORTANT)
+def generate_valid_sql(user_query, retries=2):
+    for _ in range(retries):
+        sql = generate_sql(user_query)
+        sql = clean_sql(sql)
+
+        if is_valid_sql(sql):
+            return sql
+
+    return None
+
+
 # 🔹 Main agent
 def sql_agent(user_query):
-    sql = generate_sql(user_query)
 
-    print("RAW SQL:", sql)  # debug
+    sql = generate_valid_sql(user_query)
 
-    sql = clean_sql(sql)
+    if sql is None:
+        return {"error": "Failed to generate valid SQL"}
 
-    if not is_valid_sql(sql):
-        return f"❌ Invalid or unsafe SQL generated:\n{sql}"
+    print("FINAL SQL:", sql)
 
     try:
         result = run_query(sql)
-        return result
+
+        # 🔥 Ensure always DataFrame
+        if isinstance(result, pd.DataFrame):
+            return result
+        else:
+            return {"error": str(result)}
+
     except Exception as e:
-        return f"❌ SQL Execution Error:\n{str(e)}\n\nQuery:\n{sql}"
+        return {"error": str(e)}
