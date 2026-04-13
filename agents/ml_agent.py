@@ -2,64 +2,42 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 
 def forecast(df, n_days=5):
-
-    # 🔹 Handle SQL errors
-    if isinstance(df, dict) and "error" in df:
-        return f"Error in data: {df['error']}"
-
-    # 🔹 Handle string fallback
     if isinstance(df, str):
         return df
 
-    # 🔹 Handle empty data
-    if df is None or df.empty:
-        return "No data available for forecasting"
+    # Convert date
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values("date")
 
-    try:
-        # 🔹 Work on copy (important)
-        df = df.copy()
+    # Feature engineering
+    df["day"] = df["date"].dt.dayofyear
 
-        # 🔹 Ensure required columns
-        if "date" not in df.columns or "revenue" not in df.columns:
-            return "Required columns (date, revenue) missing"
+    X = df[["day"]]
+    y = df["revenue"]
 
-        # 🔹 Convert date
-        df["date"] = pd.to_datetime(df["date"])
-        df = df.sort_values("date")
+    # Train model
+    model = LinearRegression()
+    model.fit(X, y)
 
-        # 🔹 Feature engineering
-        df["day"] = df["date"].dt.dayofyear
+    # Get last date
+    last_date = df["date"].max()
 
-        X = df[["day"]]
-        y = df["revenue"]
+    # Generate future dates
+    future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=n_days)
 
-        # 🔹 Train model
-        model = LinearRegression()
-        model.fit(X, y)
+    future_days = pd.DataFrame({
+        "day": future_dates.dayofyear
+    })
 
-        # 🔹 Get last date
-        last_date = df["date"].max()
+    # Predict
+    preds = model.predict(future_days)
 
-        # 🔹 Generate future dates
-        future_dates = pd.date_range(
-            start=last_date + pd.Timedelta(days=1),
-            periods=n_days
-        )
-
-        future_days = pd.DataFrame({
-            "day": future_dates.dayofyear
+    # Return clean output (date + prediction)
+    result = []
+    for date, pred in zip(future_dates, preds):
+        result.append({
+            "date": date.strftime("%Y-%m-%d"),
+            "predicted_revenue": float(pred)
         })
 
-        # 🔹 Predict
-        preds = model.predict(future_days)
-
-        # 🔥 Convert to DataFrame (VERY IMPORTANT)
-        result_df = pd.DataFrame({
-            "date": future_dates,
-            "predicted_revenue": preds
-        })
-
-        return result_df
-
-    except Exception as e:
-        return f"Forecast Error: {str(e)}"
+    return result
