@@ -44,4 +44,4 @@ def handle_query(query):
         return analyze(df)
 
     else:
-        return sql_agent(query) 
+        return sql_agent(query)
