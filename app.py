@@ -1,6 +1,6 @@
 import streamlit as st
 from db.database import init_db
-from agents.orchestrator import handle_query
+from agents.langgraph_orchestrator import handle_query
 
 st.set_page_config(page_title="AI Business Copilot")
 
