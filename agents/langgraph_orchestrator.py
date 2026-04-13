@@ -155,6 +155,12 @@ app = build_graph()
 def handle_query(query: str):
     result = app.invoke({"query": query})
 
-    print("FINAL STATE:", result)  # debug
+    print("FINAL STATE:", result)
 
-    return result.get("result", "No result generated")
+    # 🔥 handle multiple outputs
+    if "result" in result:
+        return result["result"]
+    elif "data" in result:
+        return result["data"]
+    else:
+        return "No result generated"
